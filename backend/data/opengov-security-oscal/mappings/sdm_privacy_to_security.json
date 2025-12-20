@@ -1,0 +1,186 @@
+{
+  "metadata": {
+    "title": "SDM Privacy ↔ Security / Resilience Mapping",
+    "version": "0.1.0-draft",
+    "last-modified": "2025-12-09",
+    "author": "open-gov-group",
+    "remarks": "Proof-of-concept: mapping between SDM Privacy/TOM controls and security/resilience controls and standards (BSI IT-Grundschutz, ISO/IEC 27001:2022, ISO/IEC 27701)."
+  },
+  "sdm_privacy_to_security": [
+    {
+      "sdm-control-id": "SDM-TOM-LC-01-03",
+      "sdm-group-id": "sdm-tom-lifecycle",
+      "sdm-title": "Löschung in Sicherungskopien und bei Auftragsverarbeitern",
+      "description": "Stellt sicher, dass das Lösch- und Aufbewahrungskonzept auch für Backups und Auftragsverarbeiter gilt und gelöschte/unzulässige Daten nicht durch Restore oder Dienstleister dauerhaft zurückkehren.",
+      "security-controls": [
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-BACKUP-LIFECYCLE-01",
+          "control-title": "Backup retention and recovery lifecycle"
+        },
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-THIRD-PARTY-DATA-LIFECYCLE-01",
+          "control-title": "Third-party data lifecycle and deletion"
+        }
+      ],
+      "standards": {
+        "bsi-it-grundschutz": [
+          "CON.2 Datenschutz",
+          "APP.3.1 Webanwendungen und Webservices",
+          "APP.4.3 Relationale Datenbanken",
+          "OPS.1.1.5 Protokollierung"
+        ],
+        "iso27001:2022": [
+          "5.34 Privacy and protection of PII",
+          "8.10 Information deletion"
+        ],
+        "iso27701": [
+          "7.3.6 Access, correction and/or erasure",
+          "7.4.7 Retention",
+          "A.7.4.5 PII de-identification and deletion at the end of processing"
+        ]
+      },
+      "notes": "Privacy-Sicht: SDM-TOM-LC-01-03 operationalisiert DSGVO-Löschpflichten in Backups und bei Auftragsverarbeitern. Security-/Resilienz-Sicht: SEC-BACKUP-LIFECYCLE-01 und SEC-THIRD-PARTY-DATA-LIFECYCLE-01 sorgen für konsistente Backup-Retention, Recovery-Szenarien und vertraglich/technisch abgesicherte Löschung bei Dienstleistern."
+    },
+    {
+      "sdm-control-id": "SDM-TOM-DEL-01-03",
+      "sdm-group-id": "sdm-tom-deletion",
+      "sdm-title": "Löschung in Sicherungen, Archiven und verteilten Systemen",
+      "description": "Adressiert den „harten Teil“ der Löschung: Sicherungen, Langzeitarchive und verteilte Systeme, inklusive Löschpropagation nach Restore und wirksame Beendigung von Aufbewahrungsfristen.",
+      "security-controls": [
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-ARCHIVE-RETENTION-01",
+          "control-title": "Archival retention and disposal"
+        },
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-RESTORE-CONTROL-01",
+          "control-title": "Controlled restore and change replay"
+        }
+      ],
+      "standards": {
+        "bsi-it-grundschutz": [
+          "CON.2 Datenschutz",
+          "APP.4.3 Relationale Datenbanken",
+          "APP.3.1 Webanwendungen und Webservices"
+        ],
+        "iso27001:2022": [
+          "8.10 Information deletion"
+        ],
+        "iso27701": [
+          "7.4.7 Retention",
+          "7.4.8 Disposal"
+        ]
+      },
+      "notes": "Privacy-Sicht: Fokus auf DSGVO-konforme Löschung trotz Backups/Archiven und komplexer Replikationskonzepte. Security-Sicht: Resilienz-Controls SEC-ARCHIVE-RETENTION-01 und SEC-RESTORE-CONTROL-01 modellieren geregelte Aufbewahrung, Wiederherstellungspfad und Löschnachführung als Teil der Business-Continuity-Architektur."
+    },
+    {
+      "sdm-control-id": "SDM-TOM-REC-01-05",
+      "sdm-group-id": "sdm-tom-rectification",
+      "sdm-title": "Konsistente Berichtigung in referenzierten und verteilten Beständen",
+      "description": "Stellt sicher, dass Berichtigungen personenbezogener Daten konsistent über referenzierte, replizierte und verteilte Bestände hinweg umgesetzt werden und Protokollierung/Audittrail dies nachvollziehbar macht.",
+      "security-controls": [
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-DATA-INTEGRITY-01",
+          "control-title": "Data integrity and correction lifecycle"
+        },
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-AUDIT-LOG-01",
+          "control-title": "Audit logging for data changes"
+        }
+      ],
+      "standards": {
+        "bsi-it-grundschutz": [
+          "CON.2 Datenschutz",
+          "APP.4.3 Relationale Datenbanken",
+          "OPS.1.1.5 Protokollierung"
+        ],
+        "iso27001:2022": [
+          "5.34 Privacy and protection of PII",
+          "8.15 Logging"
+        ],
+        "iso27701": [
+          "7.3.6 Access, correction and/or erasure",
+          "7.4.3 Accuracy and quality"
+        ]
+      },
+      "notes": "Privacy-Sicht: REC-01-05 übersetzt das Recht auf Berichtigung in konkrete technische Anforderungen (Konsistenz, Referenzen, Teilbestände). Security-Sicht: SEC-DATA-INTEGRITY-01 und SEC-AUDIT-LOG-01 koppeln Integrität und Nachvollziehbarkeit an Logging und Datenmodell-Design (Referenzintegrität, Change-Events, gestufte Freigaben)."
+    },
+    {
+      "sdm-control-id": "SDM-TOM-RES-01-04",
+      "sdm-group-id": "sdm-tom-restriction",
+      "sdm-title": "Einschränken in Datenplattformen, Backups und Replikaten",
+      "description": "Sorgt dafür, dass Einschränkung der Verarbeitung (Art. 18 DSGVO) in Datenplattformen, Backups, Replikaten und Datenpipelines technisch abbildbar ist (Flags, Segmentierung, Zugriffssteuerung).",
+      "security-controls": [
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-PII-RESTRICTION-01",
+          "control-title": "Restriction of PII processing in data platforms"
+        },
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-BACKUP-LIFECYCLE-01",
+          "control-title": "Backup retention and recovery lifecycle"
+        }
+      ],
+      "standards": {
+        "bsi-it-grundschutz": [
+          "CON.2 Datenschutz",
+          "APP.3.1 Webanwendungen und Webservices",
+          "APP.4.3 Relationale Datenbanken"
+        ],
+        "iso27001:2022": [
+          "5.34 Privacy and protection of PII",
+          "8.10 Information deletion (für Rücknahme der Einschränkung / Übergang zur Löschung)",
+          "8.11 Data masking (sofern eingesetzt)"
+        ],
+        "iso27701": [
+          "7.3.6 Access, correction and/or erasure",
+          "7.4.2 Limit processing",
+          "7.4.9 PII transmission controls"
+        ]
+      },
+      "notes": "Privacy-Sicht: RES-01-04 macht Einschränkung der Verarbeitung zu einem technischen State, der sich über Plattformen, Backups und Replikate konsistent durchzieht. Security-/Resilienz-Sicht: SEC-PII-RESTRICTION-01 kombiniert Segmentierung, Attribute-Based Access, Maskierung und Policies, SEC-BACKUP-LIFECYCLE-01 stellt sicher, dass dieser State in Backup-/Restore-Prozessen berücksichtigt wird."
+    },
+    {
+      "sdm-control-id": "SDM-TOM-LG-02",
+      "sdm-group-id": "sdm-tom-logging",
+      "sdm-title": "Zentrales Protokollierungs- und Monitoring-Konzept für Datenschutzereignisse",
+      "description": "Bündelt Anforderungen an zentrale Logaggregation und Monitoring, um datenschutzrelevante Ereignisse (Zugriffe, Änderungen, Löschungen, Rechte-Eingriffe) zu erkennen und nachzuweisen.",
+      "security-controls": [
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-LOGGING-01",
+          "control-title": "Centralized logging of security and privacy events"
+        },
+        {
+          "catalog-id": "opengov-resilience-baseline",
+          "control-id": "SEC-MONITORING-01",
+          "control-title": "Security monitoring and alerting"
+        }
+      ],
+      "standards": {
+        "bsi-it-grundschutz": [
+          "OPS.1.1.5 Protokollierung",
+          "CON.2 Datenschutz",
+          "APP.3.1 Webanwendungen und Webservices"
+        ],
+        "iso27001:2022": [
+          "8.15 Logging",
+          "8.16 Monitoring activities",
+          "5.23 Information security event reporting"
+        ],
+        "iso27701": [
+          "7.4.3 Accuracy and quality",
+          "7.4.5 PII de-identification and deletion at the end of processing (Nachweisfähigkeit)",
+          "8.3.1 Obligations to PII principals – evidence of handling requests"
+        ]
+      },
+      "notes": "Privacy-Sicht: LG-02 stellt sicher, dass Datenschutzereignisse (z.B. unzulässige Zugriffe, fehlgeschlagene Löschläufe) technisch sichtbar und nachweisbar sind. Security-Sicht: SEC-LOGGING-01/SEC-MONITORING-01 verankern dies im Security-/Resilienz-Stack (SIEM, Use-Cases, Mindeststandard Protokollierung nach BSI)."
+    }
+  ]
+}

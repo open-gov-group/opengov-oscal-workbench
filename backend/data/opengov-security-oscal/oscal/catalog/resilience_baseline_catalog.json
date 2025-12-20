@@ -1,0 +1,188 @@
+{
+  "catalog": {
+    "uuid": "b41bdb1d-cf49-4538-b634-0465eebc83ad",
+    "metadata": {
+      "title": "OpenGov Resilience Baseline – Security & Resilience Controls",
+      "version": "0.1.0-draft",
+      "oscal-version": "1.1.2",
+      "last-modified": "2025-12-09T00:00:00Z",
+      "props": [
+        {
+          "name": "catalog-scope",
+          "value": "security-resilience"
+        }
+      ],
+      "parties": [
+        {
+          "uuid": "d1dc8e1a-52e7-454a-b722-8f9a30ae6144",
+          "type": "organization",
+          "name": "open-gov-group – Security & Resilience"
+        }
+      ]
+    },
+
+    "groups": [
+      {
+        "id": "res-baseline",
+        "title": "Resilience Baseline Controls",
+        "class": "security-resilience",
+        "controls": [
+
+          {
+            "id": "SEC-BACKUP-LIFECYCLE-01",
+            "title": "Backup retention and recovery lifecycle",
+            "class": "technical",
+            "props": [
+              { "name": "domain", "value": "backup-recovery" },
+              { "name": "objective", "value": "ensure backups support confidentiality, integrity, availability and legal requirements" }
+            ],
+            "parts": [
+              {
+                "id": "sec-backup-lifecycle-01-desc",
+                "name": "description",
+                "prose": "Das Unternehmen definiert und dokumentiert einen vollständigen Lebenszyklus für Datensicherungen: Erzeugung, Verschlüsselung, Aufbewahrungsfristen, Speicherorte, Zugriffsbeschränkungen, Wiederherstellung sowie Löschung/Überschreiben nach Ablauf der Fristen. Backups werden regelmäßig getestet; Wiederherstellungsprozesse berücksichtigen Datenschutzanforderungen (z.B. Löschung/Einschränkung)."
+              }
+            ]
+          },
+
+          {
+            "id": "SEC-THIRD-PARTY-DATA-LIFECYCLE-01",
+            "title": "Third-party data lifecycle and deletion",
+            "class": "organizational",
+            "props": [
+              { "name": "domain", "value": "third-party-management" },
+              { "name": "objective", "value": "ensure processors handle data retention and deletion according to policy and law" }
+            ],
+            "parts": [
+              {
+                "id": "sec-3p-lifecycle-01-desc",
+                "name": "description",
+                "prose": "Für alle Auftragsverarbeiter und andere Dienstleister mit Zugriff auf personenbezogene Daten existieren vertraglich und technisch umgesetzte Regelungen zu Aufbewahrungsfristen, Lösch- und Rückgabepflichten. Es ist klar beschrieben, welche Daten zu welchem Zeitpunkt gelöscht oder zurückgegeben werden, wie dies nachgewiesen wird und wie mit Backups bei Dienstleistern umzugehen ist."
+              }
+            ]
+          },
+
+          {
+            "id": "SEC-ARCHIVE-RETENTION-01",
+            "title": "Archival retention and disposal",
+            "class": "organizational",
+            "props": [
+              { "name": "domain", "value": "archiving" },
+              { "name": "objective", "value": "govern retention and disposal of records and archives" }
+            ],
+            "parts": [
+              {
+                "id": "sec-archive-retention-01-desc",
+                "name": "description",
+                "prose": "Es existiert ein Archiv- und Aufbewahrungskonzept, das rechtliche, fachliche und sicherheitsrelevante Anforderungen vereint. Für alle Archivbestände sind Schutzbedarf, Aufbewahrungsdauer, Zugriffsberechtigungen und Verfahren zur endgültigen Vernichtung definiert und umgesetzt."
+              }
+            ]
+          },
+
+          {
+            "id": "SEC-RESTORE-CONTROL-01",
+            "title": "Controlled restore and change replay",
+            "class": "technical",
+            "props": [
+              { "name": "domain", "value": "backup-recovery" },
+              { "name": "objective", "value": "control and document restore operations, including replay of changes" }
+            ],
+            "parts": [
+              {
+                "id": "sec-restore-control-01-desc",
+                "name": "description",
+                "prose": "Wiederherstellungen aus Sicherungen erfolgen nur nach Freigabe und werden protokolliert. Für Systeme mit personenbezogenen Daten existieren Verfahren, um nach einem Restore nachträgliche Änderungen (z.B. Berichtigungen, Löschungen, Einschränkungen) automatisiert erneut anzuwenden oder nachzuziehen, damit der Zielzustand datenschutzkonform ist."
+              }
+            ]
+          },
+
+          {
+            "id": "SEC-DATA-INTEGRITY-01",
+            "title": "Data integrity and correction lifecycle",
+            "class": "technical",
+            "props": [
+              { "name": "domain", "value": "data-integrity" },
+              { "name": "objective", "value": "ensure that data integrity and correction processes are governed and implemented" }
+            ],
+            "parts": [
+              {
+                "id": "sec-data-integrity-01-desc",
+                "name": "description",
+                "prose": "Es existieren Verfahren und technische Mechanismen, um die Integrität geschäftskritischer und personenbezogener Daten sicherzustellen. Berichtigungen werden nachvollziehbar erfasst, konsistent auf alle relevanten Systeme angewendet und durch Integritätsprüfungen (z.B. Checksummen, Plausibilitäten, Reconciliation) abgesichert."
+              }
+            ]
+          },
+
+          {
+            "id": "SEC-AUDIT-LOG-01",
+            "title": "Audit logging for data changes",
+            "class": "technical",
+            "props": [
+              { "name": "domain", "value": "logging" },
+              { "name": "objective", "value": "provide tamper-resistant audit trails for security- and privacy-relevant changes" }
+            ],
+            "parts": [
+              {
+                "id": "sec-audit-log-01-desc",
+                "name": "description",
+                "prose": "Relevante Änderungen an Datenbeständen (insbesondere personenbezogene Daten, Berechtigungen, Konfigurations- und Sicherheitsparameter) werden in manipulationsresistenten Audit-Logs aufgezeichnet. Audit-Logs enthalten mindestens Zeitpunkt, Akteur, Objekt, Art der Änderung und werden nach definierten Fristen geschützt aufbewahrt."
+              }
+            ]
+          },
+
+          {
+            "id": "SEC-PII-RESTRICTION-01",
+            "title": "Restriction of PII processing in data platforms",
+            "class": "technical",
+            "props": [
+              { "name": "domain", "value": "pii-governance" },
+              { "name": "objective", "value": "enforce restriction of processing states in analytical and operational data platforms" }
+            ],
+            "parts": [
+              {
+                "id": "sec-pii-restriction-01-desc",
+                "name": "description",
+                "prose": "Analytische und operative Datenplattformen (z.B. Data Warehouse, Data Lake, Suchindizes, Caches) unterstützen Zustände zur Einschränkung der Verarbeitung personenbezogener Daten. Diese Zustände werden bei Datenübernahmen, Abfragen und Auswertungen berücksichtigt; unzulässige Verarbeitung eingeschränkter Datensätze wird durch technische Maßnahmen verhindert."
+              }
+            ]
+          },
+
+          {
+            "id": "SEC-LOGGING-01",
+            "title": "Centralized logging of security and privacy events",
+            "class": "technical",
+            "props": [
+              { "name": "domain", "value": "logging" },
+              { "name": "objective", "value": "collect relevant logs from systems processing sensitive and PII data" }
+            ],
+            "parts": [
+              {
+                "id": "sec-logging-01-desc",
+                "name": "description",
+                "prose": "Systeme, die sicherheits- oder datenschutzrelevante Informationen verarbeiten, liefern Protokolle an eine zentrale Logging-Infrastruktur. Die zu erfassenden Ereignisse (z.B. Authentisierung, Berechtigungsänderungen, Datenzugriffe, Exporte) sind definiert; Log-Qualität und Vollständigkeit werden regelmäßig überprüft."
+              }
+            ]
+          },
+
+          {
+            "id": "SEC-MONITORING-01",
+            "title": "Security monitoring and alerting",
+            "class": "technical",
+            "props": [
+              { "name": "domain", "value": "monitoring" },
+              { "name": "objective", "value": "detect and respond to security and privacy incidents" }
+            ],
+            "parts": [
+              {
+                "id": "sec-monitoring-01-desc",
+                "name": "description",
+                "prose": "Auf Basis zentral verfügbarer Logdaten sind Use-Cases und Regeln definiert, um sicherheits- und datenschutzrelevante Ereignisse zu erkennen (z.B. untypische Zugriffe, wiederholte Fehlversuche, Massenabfragen, fehlgeschlagene Löschprozesse). Es bestehen Alarmierungswege und ein etabliertes Incident-Management."
+              }
+            ]
+          }
+
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+# ---------------------------
+# OS / Editor
+# ---------------------------
+.DS_Store
+Thumbs.db
+Icon?
+._*
+
+
+# ---------------------------
+# Tests / Coverage
+# ---------------------------
+coverage/
+.nyc_output/
+junit.xml
+
+# ---------------------------
+# Env / Secrets / Keys
+# ---------------------------
+.env
+.env.*
+.venv
+.venv.*
+*.secret.*
+.venv/
+secrets/
+tokens/
+private/
+*.key
+*.pem
+*.p12
+*.crt
+
+# ---------------------------
+# Logs / Reports
+# ---------------------------
+*.log
+*.trace
+*.stacktrace
+
+
