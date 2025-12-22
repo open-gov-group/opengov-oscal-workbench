@@ -8,6 +8,22 @@ Icon?
 
 
 # ---------------------------
+# Frontend / React
+# ---------------------------
+
+frontend/node_modules
+frontend/public
+.gitignore
+
+# ---------------------------
+# Backend / python
+# ---------------------------
+backend/__pycache__
+backend/*/__pycache__
+backend/*/*/__pycache__
+__init__.*
+
+# ---------------------------
 # Tests / Coverage
 # ---------------------------
 coverage/

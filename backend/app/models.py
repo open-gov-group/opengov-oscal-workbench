@@ -88,3 +88,71 @@ class SaveResponse(BaseModel):
     mode: Literal["preview", "saved"]
     written: bool = False
     diff: Optional[DiffResult] = None
+
+class SdmControlUpdateProps(BaseModel):
+    """
+    Props, die über die API aktualisiert werden können.
+    Alles optional, damit wir nur Teilupdates machen müssen.
+    """
+    implementationLevel: Optional[str] = None
+    dpRiskImpact: Optional[str] = None
+    relatedMappings: Optional[List[RelatedMapping]] = None
+
+
+class SdmControlUpdateRequest(BaseModel):
+    props: SdmControlUpdateProps
+
+#resilience models
+
+class SecurityControl(BaseModel):
+    id: str
+    title: str
+    class_: Optional[str] = None
+    domain: Optional[str] = None
+    objective: Optional[str] = None
+    description: Optional[str] = None
+
+class SecurityControlUpdateRequest(BaseModel):
+    """
+    Felder, die für ein SEC-Control über die API geändert werden können.
+    Alle optional, damit Teilupdates möglich sind.
+    """
+    title: Optional[str] = None
+    domain: Optional[str] = None
+    objective: Optional[str] = None
+    description: Optional[str] = None
+
+
+#mapping models
+
+class SecurityControlRef(BaseModel):
+    catalogId: str  # z.B. "opengov-resilience-baseline"
+    controlId: str  # z.B. "SEC-BACKUP-LIFECYCLE-01"
+
+
+class MappingStandards(BaseModel):
+    bsi: Optional[List[str]] = None         # z.B. ["CON.2", "APP.3.1"]
+    iso27001: Optional[List[str]] = None   # z.B. ["5.34", "8.10"]
+    iso27701: Optional[List[str]] = None   # z.B. ["obligations-to-pii-principals"]
+
+
+class SdmSecurityMapping(BaseModel):
+    sdmControlId: str
+    sdmTitle: str
+    securityControls: List[SecurityControlRef] = []
+    standards: MappingStandards = MappingStandards()
+    notes: Optional[str] = None
+
+
+class SdmSecurityMappingUpdateRequest(BaseModel):
+    """
+    Request für PUT /api/mapping/{sdmControlId}.
+    Wir behandeln das als vollständiges Ersetzen des Mappings
+    (d.h. UI schickt den aktuellen Stand komplett).
+    """
+    sdmTitle: str
+    securityControls: List[SecurityControlRef] = []
+    standards: MappingStandards = MappingStandards()
+    notes: Optional[str] = None
+
+
