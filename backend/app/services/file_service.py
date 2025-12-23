@@ -30,3 +30,7 @@ class FileService:
         old_json = json.loads(old_content)
         new_json = json.loads(new_content)
         return diff_service.diff_json(old_json, new_json)
+
+    def diff_current_and_new(self, name: str, new_content: str):
+        old_content = self.read_text(name)
+        return self.diff(old_content, new_content)

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from ..models import FileContent, SaveRequest, SaveResponse
 from ..services.file_service import FileService
@@ -14,6 +15,38 @@ def get_file(name: str):
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return FileContent(name=name, content=content)
+
+
+
+class FileDiffRequest(BaseModel):
+    updated: str  # neue JSON-Version als String
+
+
+@router.post("/files/{name}/diff")
+def diff_file(name: str, req: FileDiffRequest):
+    """
+    Vergleicht die aktuell gespeicherte Datei {name} mit der übergebenen
+    neuen Version und liefert einen strukturierten JSON-Diff zurück.
+    Die Datei wird dabei NICHT überschrieben.
+    """
+    fs = FileService()
+    try:
+        diff = fs.diff_current_and_new(name, req.updated)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="File not found – prüfe Dateinamen und config.py",
+        )
+    except ValueError as e:
+        # z.B. unknown file name oder ungültiges JSON
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fehler beim Erzeugen des Diffs: {e}",
+        )
+
+    return {"name": name, "diff": diff}
 
 
 @router.post("/save", response_model=SaveResponse)

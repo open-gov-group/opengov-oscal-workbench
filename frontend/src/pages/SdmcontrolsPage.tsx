@@ -91,6 +91,11 @@ const SDMControlsPage: React.FC = () => {
   const [securityLoading, setSecurityLoading] = useState(false);
   const [securityError, setSecurityError] = useState<string | null>(null);
 
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffError, setDiffError] = useState<string | null>(null);
+  const [diffResult, setDiffResult] = useState<any | null>(null);
+  const [diffOpen, setDiffOpen] = useState(false);
+
   const [search, setSearch] = useState("");
 
   // --- Initial load: SDM controls + security controls ---
@@ -309,6 +314,97 @@ const SDMControlsPage: React.FC = () => {
       setMappingSaving(false);
     }
   };
+
+    const showDiff = async () => {
+    if (!mapping || !selectedId) return;
+
+    setDiffLoading(true);
+    setDiffError(null);
+    setDiffResult(null);
+    setDiffOpen(true);
+
+    try {
+      // 1) Aktuelle Mapping-Datei vom Server holen
+      const fileRes = await fetch(
+        `${API_BASE}/api/files/sdm_privacy_to_security`,
+      );
+      if (!fileRes.ok) {
+        throw new Error(`HTTP ${fileRes.status} beim Lesen der Mapping-Datei`);
+      }
+      const fileData = await fileRes.json();
+      const currentContent = fileData.content as string;
+      const json = JSON.parse(currentContent);
+
+      // 2) Neue Version der mappings erzeugen: ausgewähltes Mapping ersetzen/ergänzen
+      const rawMappings = Array.isArray(json.mappings) ? json.mappings : [];
+      const updatedRawMapping = {
+        sdm_control_id: mapping.sdmControlId,
+        sdm_title: mapping.sdmTitle,
+        security_controls: (mapping.securityControls ?? []).map((sc) => ({
+          catalog_id: sc.catalogId,
+          control_id: sc.controlId,
+        })),
+        standards: {
+          ...(mapping.standards.bsi
+            ? { bsi: mapping.standards.bsi }
+            : {}),
+          ...(mapping.standards.iso27001
+            ? { iso27001: mapping.standards.iso27001 }
+            : {}),
+          ...(mapping.standards.iso27701
+            ? { iso27701: mapping.standards.iso27701 }
+            : {}),
+        },
+        notes: mapping.notes ?? null,
+      };
+
+      let found = false;
+      const newMappings = rawMappings.map((m: any) => {
+        if (m.sdm_control_id === mapping.sdmControlId) {
+          found = true;
+          return updatedRawMapping;
+        }
+        return m;
+      });
+      if (!found) {
+        newMappings.push(updatedRawMapping);
+      }
+
+      const newJson = {
+        ...json,
+        mappings: newMappings,
+      };
+
+      const updatedString = JSON.stringify(newJson, null, 2);
+
+      // 3) Diff-Endpunkt aufrufen
+      const diffRes = await fetch(
+        `${API_BASE}/api/files/sdm_privacy_to_security/diff`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updated: updatedString }),
+        },
+      );
+
+      if (!diffRes.ok) {
+        throw new Error(`HTTP ${diffRes.status} beim Diff-Aufruf`);
+      }
+
+      const diffData = await diffRes.json();
+      setDiffResult(diffData.diff ?? diffData); // falls der Endpoint diff unter .diff zurückgibt
+    } catch (err: any) {
+      console.error(err);
+      setDiffError(
+        err instanceof Error
+          ? err.message
+          : "Fehler beim Erzeugen des Diffs.",
+      );
+    } finally {
+      setDiffLoading(false);
+    }
+  };
+
 
   const selectedSecurityIds = new Set(mapping?.securityControls.map((s) => s.controlId));
 
@@ -684,19 +780,70 @@ const SDMControlsPage: React.FC = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-[10px] text-slate-500 max-w-md">
-                      Änderungen werden direkt in der Mapping-Datei gespeichert. Für umfangreiche Änderungen empfiehlt sich ein separater Branch bzw. Review-Prozess.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={saveMapping}
-                      disabled={mappingSaving}
-                      className="inline-flex items-center gap-1 rounded-full bg-emerald-500 text-emerald-950 px-3 py-1.5 text-[11px] font-medium shadow-sm hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {mappingSaving ? "Speichern …" : "Mapping speichern"}
-                    </button>
+                {diffOpen && (
+                  <div className="mt-1 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[11px] font-medium text-slate-200">
+                        Diff zur gespeicherten Mapping-Datei
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDiffOpen(false)}
+                        className="text-[10px] text-slate-400 hover:text-slate-200"
+                      >
+                        schließen
+                      </button>
+                    </div>
+                    {diffLoading && (
+                      <div className="text-[11px] text-slate-500">
+                        Diff wird berechnet …
+                      </div>
+                    )}
+                    {diffError && (
+                      <div className="text-[11px] text-red-400">{diffError}</div>
+                    )}
+                    {!diffLoading && !diffError && diffResult && (
+                      <pre className="text-[10px] text-slate-200 bg-slate-950/80 rounded-lg p-2 overflow-auto max-h-48 whitespace-pre-wrap">
+                        {JSON.stringify(diffResult, null, 2)}
+                      </pre>
+                    )}
+                    {!diffLoading && !diffError && !diffResult && (
+                      <div className="text-[11px] text-slate-500">
+                        Es liegen aktuell keine Unterschiede zur gespeicherten Datei vor
+                        (oder der Diff enthält keine relevanten Änderungen für dieses
+                        Mapping).
+                      </div>
+                    )}
                   </div>
+                )}
+
+
+
+                  <div className="flex items-center justify-between mt-1 gap-3">
+                    <p className="text-[10px] text-slate-500 max-w-md">
+                      Änderungen werden direkt in der Mapping-Datei gespeichert. Für umfangreiche Änderungen empfiehlt sich ein separater Branch bzw. Review-Prozess. Über{" "}
+                      <span className="text-slate-200 font-medium">„Diff anzeigen“</span> können Sie die Änderungen vor dem Speichern prüfen.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={showDiff}
+                        disabled={diffLoading || !mapping}
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-600 bg-slate-900 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {diffLoading ? "Diff …" : "Diff anzeigen"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={saveMapping}
+                        disabled={mappingSaving}
+                        className="inline-flex items-center gap-1 rounded-full bg-emerald-500 text-emerald-950 px-3 py-1.5 text-[11px] font-medium shadow-sm hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {mappingSaving ? "Speichern …" : "Mapping speichern"}
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               )}
             </div>
