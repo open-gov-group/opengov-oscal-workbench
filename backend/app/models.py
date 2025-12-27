@@ -155,4 +155,79 @@ class SdmSecurityMappingUpdateRequest(BaseModel):
     standards: MappingStandards = MappingStandards()
     notes: Optional[str] = None
 
+#oscal privacy models
+
+
+
+class PrivacyGroupSummary(BaseModel):
+    id: str            # stabile Gruppen-ID (z.B. "tom-access-control")
+    title: str         # sprechender Titel (z.B. "Zugriff & Berechtigungen")
+
+class PrivacyGroupDetail(PrivacyGroupSummary):
+    description: Optional[str] = None   # optional, falls wir später etwas wie "remarks" o.ä. pflegen wollen
+    controlCount: int                   # wie viele Controls hängen aktuell in dieser Gruppe
+
+class PrivacyGroupCreateRequest(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+
+class PrivacyGroupUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+class PrivacyGroupDeleteRequest(BaseModel):
+    """
+    Optionales Verhalten beim Löschen:
+    - reassignTo: Controls in eine andere Gruppe verschieben
+    - allowDeleteNonEmpty: true → Gruppe auch dann löschen, wenn sie noch Controls hat
+    """
+    reassignTo: Optional[str] = None
+    allowDeleteNonEmpty: bool = False
+
+
+class PrivacyControlSummary(BaseModel):
+    id: str
+    title: str
+    group_id: Optional[str] = None
+    tom_id: Optional[str] = None
+    dsgvo_articles: List[str] = []
+    dp_goals: List[str] = []
+
+
+class PrivacyControlDetail(BaseModel):
+    id: str
+    title: str
+    group_id: Optional[str] = None
+    tom_id: Optional[str] = None
+    dsgvo_articles: List[str] = []
+    dp_goals: List[str] = []
+
+    # „Inhaltsebene“ des Kompendiums
+    statement: Optional[str] = None
+    maturity_level_1: Optional[str] = None
+    maturity_level_3: Optional[str] = None
+    maturity_level_5: Optional[str] = None
+
+    typical_measures: List[str] = []
+    assessment_questions: List[str] = []
+    risk_hint: Optional[str] = None
+
+class SdmTomControlSummary(BaseModel):
+    id: str
+    title: str
+    sdm_module: Optional[str] = None
+    sdm_goals: List[str] = []
+    dsgvo_articles: List[str] = []
+
+
+class SdmTomControlDetail(BaseModel):
+    id: str
+    title: str
+    sdm_module: Optional[str] = None
+    sdm_goals: List[str] = []
+    dsgvo_articles: List[str] = []
+
+    description: Optional[str] = None
+    implementation_hints: Optional[str] = None
 

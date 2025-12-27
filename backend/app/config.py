@@ -17,6 +17,9 @@ class Settings:
     SECURITY_OSCAL_PATH: Path = DATA_DIR / "opengov-security-oscal"
 
     # symbolische Namen → echte Dateien
+    PRIVACY_CATALOG_NAME = "open_privacy_catalog_risk"
+    PRIVACY_CATALOG_FILE = PRIVACY_OSCAL_PATH / "oscal" / "catalog" / "open_privacy_catalog_risk.json"
+
     SDM_PRIVACY_CATALOG_NAME = "sdm_privacy_catalog"
     SDM_PRIVACY_CATALOG_FILE = PRIVACY_OSCAL_PATH / "oscal" / "catalog" / "sdm_privacy_catalog.json"
 

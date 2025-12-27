@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import routes_sdm, routes_files, routes_resilience, routes_mapping
-
+from .api import routes_privacy_catalog, routes_sdm_catalog
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -35,6 +35,8 @@ def create_app() -> FastAPI:
     app.include_router(routes_files.router)
     app.include_router(routes_resilience.router)
     app.include_router(routes_mapping.router)
+    app.include_router(routes_privacy_catalog.router)
+    app.include_router(routes_sdm_catalog.router)
 
     return app
 

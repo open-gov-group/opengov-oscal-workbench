@@ -36,6 +36,21 @@ type SdmMappingForSec = {
   notes?: string | null;
 };
 
+// Diff types
+
+type ResilienceFieldDiff = {
+  field: string;
+  label: string;
+  before: string | null;
+  after: string | null;
+};
+
+type ResilienceDiffSummary = {
+  hasChanges: boolean;
+  changes: ResilienceFieldDiff[];
+};
+
+
 const API_BASE = "http://localhost:3000";
 
 const ResilienceControlsPage: React.FC = () => {
@@ -53,6 +68,16 @@ const ResilienceControlsPage: React.FC = () => {
   const [mappings, setMappings] = useState<SdmSecurityMapping[]>([]);
   const [mappingError, setMappingError] = useState<string | null>(null);
   const [mappingLoading, setMappingLoading] = useState(false);
+
+  const [editedControl, setEditedControl] = useState<SecurityControl | null>(
+    null,
+  );
+
+  const [resDiffOpen, setResDiffOpen] = useState(false);
+  const [resDiffSummary, setResDiffSummary] =
+    useState<ResilienceDiffSummary | null>(null);
+  const [resDiffLoading, setResDiffLoading] = useState(false);
+  const [resDiffError, setResDiffError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
 
@@ -141,6 +166,10 @@ const ResilienceControlsPage: React.FC = () => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: SecurityControl = await res.json();
         setSelectedDetail(data);
+        setEditedControl(data); // Kopie für die Bearbeitung
+        setResDiffOpen(false);
+        setResDiffSummary(null);
+        setResDiffError(null);
       } catch (err: any) {
         console.error(err);
         setDetailError("Fehler beim Laden der Control-Details.");
@@ -151,6 +180,7 @@ const ResilienceControlsPage: React.FC = () => {
 
     loadDetail();
   };
+
 
   // --- Aus den Mappings: welche SDM-Controls referenzieren dieses SEC-Control? ---
 
@@ -175,6 +205,57 @@ const ResilienceControlsPage: React.FC = () => {
     return result;
   }, [mappings, selectedId]);
 
+  const showResilienceDiff = () => {
+    if (!selectedDetail || !editedControl) return;
+
+    setResDiffLoading(true);
+    setResDiffError(null);
+    setResDiffSummary(null);
+    setResDiffOpen(true);
+
+    try {
+      const changes: ResilienceFieldDiff[] = [];
+
+      const norm = (v?: string | null) =>
+        v === undefined || v === null || v === "" ? null : v;
+
+      const fields: Array<{
+        field: keyof SecurityControl;
+        label: string;
+      }> = [
+        { field: "title", label: "Titel" },
+        { field: "objective", label: "Ziel / Objective" },
+        { field: "description", label: "Beschreibung" },
+      ];
+
+      fields.forEach(({ field, label }) => {
+        const before = norm(selectedDetail[field] as string | null);
+        const after = norm(editedControl[field] as string | null);
+        if (before !== after) {
+          changes.push({ field, label, before, after });
+        }
+      });
+
+      const summary: ResilienceDiffSummary = {
+        hasChanges: changes.length > 0,
+        changes,
+      };
+
+      setResDiffSummary(summary);
+    } catch (err: any) {
+      console.error(err);
+      setResDiffError(
+        err instanceof Error
+          ? err.message
+          : "Fehler beim Erzeugen des Diffs.",
+      );
+    } finally {
+      setResDiffLoading(false);
+    }
+  };
+
+
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">
       <header className="border-b border-slate-800 px-6 py-3 flex items-center justify-between bg-slate-900/80 backdrop-blur">
@@ -183,6 +264,19 @@ const ResilienceControlsPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-4">
             <nav className="flex items-center gap-1 text-xs bg-slate-950/60 rounded-full p-0.5 border border-slate-800">
+             <NavLink
+              to="/privacy"
+              className={({ isActive }) =>
+                [
+                  "px-3 py-1 rounded-full transition-colors",
+                  isActive
+                    ? "bg-emerald-500 text-emerald-950 font-medium"
+                    : "text-slate-300 hover:bg-slate-800",
+                ].join(" ")
+              }
+            >
+              Privacy-Katalog
+            </NavLink>
             <NavLink
                 to="/sdm"
                 className={({ isActive }) =>
@@ -344,36 +438,147 @@ const ResilienceControlsPage: React.FC = () => {
                 <p className="text-xs text-red-400">{detailError}</p>
               )}
 
-              {selectedDetail && (
+              {selectedDetail && editedControl && (
                 <div className="flex flex-col gap-3 text-xs">
                   <div>
                     <div className="font-mono text-[11px] text-sky-300">
                       {selectedDetail.id}
                     </div>
-                    <div className="text-slate-100 mt-1">
-                      {selectedDetail.title}
-                    </div>
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded-xl bg-slate-950/60 border border-slate-700 px-2 py-1.5 text-[11px] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500/60"
+                      placeholder="Titel des Resilience-Controls"
+                      value={editedControl.title}
+                      onChange={(e) =>
+                        setEditedControl({ ...editedControl, title: e.target.value })
+                      }
+                    />
                   </div>
+
                   <div className="flex flex-wrap gap-2 text-[10px] text-slate-300">
-                    {selectedDetail.domain && (
+                    {editedControl.domain && (
                       <span className="px-2 py-0.5 rounded-full bg-slate-800">
-                        Domain: {selectedDetail.domain}
+                        Domain: {editedControl.domain}
                       </span>
                     )}
-                    {selectedDetail.objective && (
-                      <span className="px-2 py-0.5 rounded-full bg-slate-800">
-                        Ziel: {selectedDetail.objective}
-                      </span>
-                    )}
-                  </div>
-                  {selectedDetail.description && (
-                    <div className="text-[11px] text-slate-300 leading-snug">
-                      {selectedDetail.description}
+                    <div className="flex-1 min-w-[50%]">
+                      <label className="block text-[10px] text-slate-400 mb-0.5">
+                        Ziel / Objective
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full rounded-xl bg-slate-950/60 border border-slate-700 px-2 py-1.5 text-[11px] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500/60"
+                        placeholder="Kurze Beschreibung des Schutzziels"
+                        value={editedControl.objective ?? ""}
+                        onChange={(e) =>
+                          setEditedControl({
+                            ...editedControl,
+                            objective: e.target.value || null,
+                          })
+                        }
+                      />
                     </div>
-                  )}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-slate-400">
+                      Beschreibung / Beschreibungstext
+                    </label>
+                    <textarea
+                      className="w-full rounded-xl bg-slate-950/60 border border-slate-700 px-2 py-1.5 text-[11px] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500/60 min-h-[80px]"
+                      placeholder="Detaillierte Beschreibung des Resilience-Controls aus Security-/Resilienz-Sicht."
+                      value={editedControl.description ?? ""}
+                      onChange={(e) =>
+                        setEditedControl({
+                          ...editedControl,
+                          description: e.target.value || null,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
               )}
+
             </div>
+            
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[10px] text-slate-500 max-w-md">
+                Änderungen am Titel, Ziel oder Beschreibung werden aktuell nur im
+                Browser gehalten. Über{" "}
+                <span className="text-slate-200 font-medium">„Diff anzeigen“</span>{" "}
+                können Sie Ihre Anpassungen im Vergleich zur gespeicherten Version
+                prüfen.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={showResilienceDiff}
+                  disabled={!editedControl || resDiffLoading}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-600 bg-slate-900 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resDiffLoading ? "Diff …" : "Diff anzeigen"}
+                </button>
+                {/* optional: später hier einen Save-Button ergänzen */}
+              </div>
+            </div>
+
+            {resDiffOpen && (
+              <div className="mt-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-medium text-slate-200">
+                    Änderungen an diesem Resilience-Control
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setResDiffOpen(false)}
+                    className="text-[10px] text-slate-400 hover:text-slate-200"
+                  >
+                    schließen
+                  </button>
+                </div>
+
+                {resDiffLoading && (
+                  <div className="text-[11px] text-slate-500">
+                    Diff wird berechnet …
+                  </div>
+                )}
+
+                {resDiffError && (
+                  <div className="text-[11px] text-red-400">{resDiffError}</div>
+                )}
+
+                {!resDiffLoading && !resDiffError && resDiffSummary && !resDiffSummary.hasChanges && (
+                  <div className="text-[11px] text-slate-500">
+                    Es wurden keine Unterschiede zur geladenen Version dieses
+                    Controls gefunden.
+                  </div>
+                )}
+
+                {!resDiffLoading && !resDiffError && resDiffSummary && resDiffSummary.hasChanges && (
+                  <div className="flex flex-col gap-2 text-[11px] text-slate-200">
+                    {resDiffSummary.changes.map((c) => (
+                      <div key={c.field} className="rounded-lg border border-slate-800 bg-slate-950/80 px-2 py-1.5">
+                        <div className="font-medium text-slate-100 mb-0.5">
+                          {c.label}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Vorher:{" "}
+                          <span className="text-slate-500">
+                            {c.before ?? "—"}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-emerald-200 mt-0.5">
+                          Jetzt:{" "}
+                          <span>{c.after ?? "—"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+
 
             {/* SDM-Mappings für dieses SEC-Control */}
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 flex flex-col gap-3 min-h-[200px]">

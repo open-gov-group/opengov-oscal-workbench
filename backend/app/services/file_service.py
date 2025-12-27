@@ -7,9 +7,10 @@ from ..config import settings
 
 
 NAME_TO_PATH: Dict[str, Path] = {
+    settings.PRIVACY_CATALOG_NAME: settings.PRIVACY_CATALOG_FILE,
     settings.SDM_PRIVACY_CATALOG_NAME: settings.SDM_PRIVACY_CATALOG_FILE,
     settings.RESILIENCE_CATALOG_NAME: settings.RESILIENCE_CATALOG_FILE,
-    settings.SDM_MAPPING_NAME: settings.SDM_MAPPING_FILE,
+    settings.SDM_MAPPING_NAME: settings.SDM_MAPPING_FILE
 }
 
 

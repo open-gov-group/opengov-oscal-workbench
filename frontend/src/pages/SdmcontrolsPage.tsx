@@ -67,6 +67,30 @@ type SecurityControl = {
   objective?: string | null;
 };
 
+// Diff types
+
+type StandardsListDiff = {
+  added: string[];
+  removed: string[];
+};
+
+type MappingDiffSummary = {
+  hasChanges: boolean;
+  addedSecurityControls: string[];
+  removedSecurityControls: string[];
+  standards: {
+    bsi?: StandardsListDiff;
+    iso27001?: StandardsListDiff;
+    iso27701?: StandardsListDiff;
+  };
+  notesChanged?: {
+    before: string | null;
+    after: string | null;
+  };
+};
+
+
+
 // Helper: API base – hier ggf. an ENV / Proxy anpassen
 const API_BASE = "http://localhost:3000";
 
@@ -93,7 +117,7 @@ const SDMControlsPage: React.FC = () => {
 
   const [diffLoading, setDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
-  const [diffResult, setDiffResult] = useState<any | null>(null);
+  const [diffResult, setDiffResult] = useState<MappingDiffSummary | null>(null);
   const [diffOpen, setDiffOpen] = useState(false);
 
   const [search, setSearch] = useState("");
@@ -302,7 +326,7 @@ const SDMControlsPage: React.FC = () => {
 
       const data: SdmSecurityMapping = await res.json();
       setMapping(data);
-      setMappingSaveMessage("Mapping erfolgreich gespeichert.");
+      setMappingSaveMessage("Mapping erfolgreich gespeichert. Bitte die Änderung anschließend im Git-Repository prüfen und ggf. committen.");
       setMappingIndex((prev) => ({
         ...prev,
         [selectedId]: 1,
@@ -315,95 +339,143 @@ const SDMControlsPage: React.FC = () => {
     }
   };
 
+  const secTitleById = useMemo(() => {
+  const map: Record<string, string> = {};
+  securityControls.forEach((sc) => {
+    map[sc.id] = sc.title;
+  });
+  return map;
+}, [securityControls]);
+
+
     const showDiff = async () => {
-    if (!mapping || !selectedId) return;
+  if (!mapping || !selectedId) return;
 
-    setDiffLoading(true);
-    setDiffError(null);
-    setDiffResult(null);
-    setDiffOpen(true);
+  setDiffLoading(true);
+  setDiffError(null);
+  setDiffResult(null);
+  setDiffOpen(true);
 
-    try {
-      // 1) Aktuelle Mapping-Datei vom Server holen
-      const fileRes = await fetch(
-        `${API_BASE}/api/files/sdm_privacy_to_security`,
-      );
-      if (!fileRes.ok) {
-        throw new Error(`HTTP ${fileRes.status} beim Lesen der Mapping-Datei`);
-      }
-      const fileData = await fileRes.json();
-      const currentContent = fileData.content as string;
-      const json = JSON.parse(currentContent);
-
-      // 2) Neue Version der mappings erzeugen: ausgewähltes Mapping ersetzen/ergänzen
-      const rawMappings = Array.isArray(json.mappings) ? json.mappings : [];
-      const updatedRawMapping = {
-        sdm_control_id: mapping.sdmControlId,
-        sdm_title: mapping.sdmTitle,
-        security_controls: (mapping.securityControls ?? []).map((sc) => ({
-          catalog_id: sc.catalogId,
-          control_id: sc.controlId,
-        })),
-        standards: {
-          ...(mapping.standards.bsi
-            ? { bsi: mapping.standards.bsi }
-            : {}),
-          ...(mapping.standards.iso27001
-            ? { iso27001: mapping.standards.iso27001 }
-            : {}),
-          ...(mapping.standards.iso27701
-            ? { iso27701: mapping.standards.iso27701 }
-            : {}),
-        },
-        notes: mapping.notes ?? null,
-      };
-
-      let found = false;
-      const newMappings = rawMappings.map((m: any) => {
-        if (m.sdm_control_id === mapping.sdmControlId) {
-          found = true;
-          return updatedRawMapping;
-        }
-        return m;
-      });
-      if (!found) {
-        newMappings.push(updatedRawMapping);
-      }
-
-      const newJson = {
-        ...json,
-        mappings: newMappings,
-      };
-
-      const updatedString = JSON.stringify(newJson, null, 2);
-
-      // 3) Diff-Endpunkt aufrufen
-      const diffRes = await fetch(
-        `${API_BASE}/api/files/sdm_privacy_to_security/diff`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ updated: updatedString }),
-        },
-      );
-
-      if (!diffRes.ok) {
-        throw new Error(`HTTP ${diffRes.status} beim Diff-Aufruf`);
-      }
-
-      const diffData = await diffRes.json();
-      setDiffResult(diffData.diff ?? diffData); // falls der Endpoint diff unter .diff zurückgibt
-    } catch (err: any) {
-      console.error(err);
-      setDiffError(
-        err instanceof Error
-          ? err.message
-          : "Fehler beim Erzeugen des Diffs.",
-      );
-    } finally {
-      setDiffLoading(false);
+  try {
+    // 1) Aktuelle Mapping-Datei vom Server holen
+    const fileRes = await fetch(
+      `${API_BASE}/api/files/sdm_privacy_to_security`,
+    );
+    if (!fileRes.ok) {
+      throw new Error(`HTTP ${fileRes.status} beim Lesen der Mapping-Datei`);
     }
-  };
+    const fileData = await fileRes.json();
+    const currentContent = fileData.content as string;
+    const json = JSON.parse(currentContent);
+    const rawMappings: any[] = Array.isArray(json.mappings)
+      ? json.mappings
+      : [];
+
+    // 2) altes Mapping für dieses SDM-Control suchen
+    const oldRaw = rawMappings.find(
+      (m) => m.sdm_control_id === mapping.sdmControlId,
+    );
+
+    // Helper zum Diffen von Listen
+    const diffList = (
+      oldList?: string[] | null,
+      newList?: string[] | null,
+    ): StandardsListDiff => {
+      const oldSet = new Set((oldList ?? []).map((s) => s.trim()));
+      const newSet = new Set((newList ?? []).map((s) => s.trim()));
+      const added: string[] = [];
+      const removed: string[] = [];
+
+      newSet.forEach((v) => {
+        if (!oldSet.has(v) && v.length > 0) added.push(v);
+      });
+      oldSet.forEach((v) => {
+        if (!newSet.has(v) && v.length > 0) removed.push(v);
+      });
+
+      return { added, removed };
+    };
+
+    // 3) Security-Controls: alt vs. neu
+    const oldSecIds = new Set(
+      (oldRaw?.security_controls ?? []).map((sc: any) => sc.control_id),
+    );
+    const newSecIds = new Set(
+      (mapping.securityControls ?? []).map((sc) => sc.controlId),
+    );
+
+    const addedSecurityControls: string[] = [];
+    const removedSecurityControls: string[] = [];
+
+    newSecIds.forEach((id) => {
+      if (!oldSecIds.has(id)) addedSecurityControls.push(id);
+    });
+    oldSecIds.forEach((id) => {
+      if (!newSecIds.has(id)) removedSecurityControls.push(id);
+    });
+
+    // 4) Standards: alt vs. neu
+    const oldStandards = oldRaw?.standards ?? {};
+    const newStandards = mapping.standards ?? {};
+
+    const bsiDiff = diffList(oldStandards.bsi, newStandards.bsi);
+    const iso27001Diff = diffList(
+      oldStandards.iso27001,
+      newStandards.iso27001,
+    );
+    const iso27701Diff = diffList(
+      oldStandards.iso27701,
+      newStandards.iso27701,
+    );
+
+    const standards: MappingDiffSummary["standards"] = {};
+    if (bsiDiff.added.length || bsiDiff.removed.length) {
+      standards.bsi = bsiDiff;
+    }
+    if (iso27001Diff.added.length || iso27001Diff.removed.length) {
+      standards.iso27001 = iso27001Diff;
+    }
+    if (iso27701Diff.added.length || iso27701Diff.removed.length) {
+      standards.iso27701 = iso27701Diff;
+    }
+
+    // 5) Notes: alt vs. neu
+    const oldNotes: string | null =
+      (oldRaw?.notes ?? null) === "" ? null : oldRaw?.notes ?? null;
+    const newNotes: string | null =
+      (mapping.notes ?? null) === "" ? null : mapping.notes ?? null;
+
+    let notesChanged: MappingDiffSummary["notesChanged"] | undefined;
+    if (oldNotes !== newNotes) {
+      notesChanged = { before: oldNotes, after: newNotes };
+    }
+
+    const hasChanges =
+      addedSecurityControls.length > 0 ||
+      removedSecurityControls.length > 0 ||
+      Object.keys(standards).length > 0 ||
+      !!notesChanged;
+
+    const summary: MappingDiffSummary = {
+      hasChanges,
+      addedSecurityControls,
+      removedSecurityControls,
+      standards,
+      notesChanged,
+    };
+
+    setDiffResult(summary);
+  } catch (err: any) {
+    console.error(err);
+    setDiffError(
+      err instanceof Error
+        ? err.message
+        : "Fehler beim Erzeugen des Diffs.",
+    );
+  } finally {
+    setDiffLoading(false);
+  }
+};
 
 
   const selectedSecurityIds = new Set(mapping?.securityControls.map((s) => s.controlId));
@@ -416,6 +488,19 @@ const SDMControlsPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-4">
           <nav className="flex items-center gap-1 text-xs bg-slate-950/60 rounded-full p-0.5 border border-slate-800">
+            <NavLink
+              to="/privacy"
+              className={({ isActive }) =>
+                [
+                  "px-3 py-1 rounded-full transition-colors",
+                  isActive
+                    ? "bg-emerald-500 text-emerald-950 font-medium"
+                    : "text-slate-300 hover:bg-slate-800",
+                ].join(" ")
+              }
+            >
+              Privacy-Katalog
+            </NavLink>
             <NavLink
               to="/sdm"
               className={({ isActive }) =>
@@ -660,11 +745,17 @@ const SDMControlsPage: React.FC = () => {
                 </p>
               )}
 
-              {mappingError && (
-                <p className="text-xs text-red-400">{mappingError}</p>
-              )}
-              {mappingSaveMessage && (
-                <p className="text-xs text-emerald-400">{mappingSaveMessage}</p>
+              {(mappingError || mappingSaveMessage) && (
+                <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs">
+                  {mappingError && (
+                    <p className="text-red-400">{mappingError}</p>
+                  )}
+                  {mappingSaveMessage && (
+                    <p className="text-emerald-400 mt-0.5">
+                      {mappingSaveMessage}
+                    </p>
+                  )}
+                </div>
               )}
 
               {mapping && selectedDetail && (
@@ -780,44 +871,183 @@ const SDMControlsPage: React.FC = () => {
                     />
                   </div>
 
-                {diffOpen && (
-                  <div className="mt-1 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 flex flex-col gap-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-[11px] font-medium text-slate-200">
-                        Diff zur gespeicherten Mapping-Datei
+                  {diffOpen && (
+                    <div className="mt-1 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[11px] font-medium text-slate-200">
+                          Änderungen an diesem Mapping
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDiffOpen(false)}
+                          className="text-[10px] text-slate-400 hover:text-slate-200"
+                        >
+                          schließen
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setDiffOpen(false)}
-                        className="text-[10px] text-slate-400 hover:text-slate-200"
-                      >
-                        schließen
-                      </button>
+
+                      {diffLoading && (
+                        <div className="text-[11px] text-slate-500">
+                          Diff wird berechnet …
+                        </div>
+                      )}
+
+                      {diffError && (
+                        <div className="text-[11px] text-red-400">{diffError}</div>
+                      )}
+
+                      {!diffLoading && !diffError && diffResult && !diffResult.hasChanges && (
+                        <div className="text-[11px] text-slate-500">
+                          Es wurden keine Unterschiede zur gespeicherten Version dieses
+                          Mappings gefunden.
+                        </div>
+                      )}
+
+                      {!diffLoading && !diffError && diffResult && diffResult.hasChanges && (
+                        <div className="flex flex-col gap-2 text-[11px] text-slate-200">
+                          {/* Security-Controls */}
+                          {(diffResult.addedSecurityControls.length > 0 ||
+                            diffResult.removedSecurityControls.length > 0) && (
+                            <div>
+                              <div className="font-medium text-slate-100 mb-0.5">
+                                Resilience-/Security-Controls
+                              </div>
+                              <ul className="list-disc list-inside space-y-0.5">
+                                {diffResult.addedSecurityControls.length > 0 && (
+                                  <li>
+                                    Hinzugefügt:{" "}
+                                    {diffResult.addedSecurityControls
+                                      .map(
+                                        (id) =>
+                                          `${id}${
+                                            secTitleById[id] ? ` – ${secTitleById[id]}` : ""
+                                          }`,
+                                      )
+                                      .join(", ")}
+                                  </li>
+                                )}
+                                {diffResult.removedSecurityControls.length > 0 && (
+                                  <li>
+                                    Entfernt:{" "}
+                                    {diffResult.removedSecurityControls
+                                      .map(
+                                        (id) =>
+                                          `${id}${
+                                            secTitleById[id] ? ` – ${secTitleById[id]}` : ""
+                                          }`,
+                                      )
+                                      .join(", ")}
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Standards */}
+                          {Object.keys(diffResult.standards).length > 0 && (
+                            <div className="flex flex-col gap-1">
+                              <div className="font-medium text-slate-100 mb-0.5">
+                                Standards
+                              </div>
+                              <ul className="list-disc list-inside space-y-0.5">
+                                {diffResult.standards.bsi && (
+                                  <li>
+                                    BSI IT-Grundschutz:{" "}
+                                    {diffResult.standards.bsi.added.length > 0 && (
+                                      <span>
+                                        hinzugefügt{" "}
+                                        <span className="text-emerald-300">
+                                          {diffResult.standards.bsi.added.join(", ")}
+                                        </span>
+                                      </span>
+                                    )}
+                                    {diffResult.standards.bsi.removed.length > 0 && (
+                                      <span>
+                                        {diffResult.standards.bsi.added.length > 0 && " / "}
+                                        entfernt{" "}
+                                        <span className="text-red-300">
+                                          {diffResult.standards.bsi.removed.join(", ")}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </li>
+                                )}
+                                {diffResult.standards.iso27001 && (
+                                  <li>
+                                    ISO 27001:{" "}
+                                    {diffResult.standards.iso27001.added.length > 0 && (
+                                      <span>
+                                        hinzugefügt{" "}
+                                        <span className="text-emerald-300">
+                                          {diffResult.standards.iso27001.added.join(", ")}
+                                        </span>
+                                      </span>
+                                    )}
+                                    {diffResult.standards.iso27001.removed.length > 0 && (
+                                      <span>
+                                        {diffResult.standards.iso27001.added.length > 0 &&
+                                          " / "}
+                                        entfernt{" "}
+                                        <span className="text-red-300">
+                                          {diffResult.standards.iso27001.removed.join(", ")}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </li>
+                                )}
+                                {diffResult.standards.iso27701 && (
+                                  <li>
+                                    ISO 27701:{" "}
+                                    {diffResult.standards.iso27701.added.length > 0 && (
+                                      <span>
+                                        hinzugefügt{" "}
+                                        <span className="text-emerald-300">
+                                          {diffResult.standards.iso27701.added.join(", ")}
+                                        </span>
+                                      </span>
+                                    )}
+                                    {diffResult.standards.iso27701.removed.length > 0 && (
+                                      <span>
+                                        {diffResult.standards.iso27701.added.length > 0 &&
+                                          " / "}
+                                        entfernt{" "}
+                                        <span className="text-red-300">
+                                          {diffResult.standards.iso27701.removed.join(", ")}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Notes */}
+                          {diffResult.notesChanged && (
+                            <div>
+                              <div className="font-medium text-slate-100 mb-0.5">
+                                Erläuterung / Notes
+                              </div>
+                              <ul className="list-disc list-inside space-y-0.5 text-slate-200">
+                                <li>
+                                  Vorher:{" "}
+                                  <span className="text-slate-400">
+                                    {diffResult.notesChanged.before ?? "—"}
+                                  </span>
+                                </li>
+                                <li>
+                                  Jetzt:{" "}
+                                  <span className="text-emerald-200">
+                                    {diffResult.notesChanged.after ?? "—"}
+                                  </span>
+                                </li>
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {diffLoading && (
-                      <div className="text-[11px] text-slate-500">
-                        Diff wird berechnet …
-                      </div>
-                    )}
-                    {diffError && (
-                      <div className="text-[11px] text-red-400">{diffError}</div>
-                    )}
-                    {!diffLoading && !diffError && diffResult && (
-                      <pre className="text-[10px] text-slate-200 bg-slate-950/80 rounded-lg p-2 overflow-auto max-h-48 whitespace-pre-wrap">
-                        {JSON.stringify(diffResult, null, 2)}
-                      </pre>
-                    )}
-                    {!diffLoading && !diffError && !diffResult && (
-                      <div className="text-[11px] text-slate-500">
-                        Es liegen aktuell keine Unterschiede zur gespeicherten Datei vor
-                        (oder der Diff enthält keine relevanten Änderungen für dieses
-                        Mapping).
-                      </div>
-                    )}
-                  </div>
-                )}
-
-
+                  )}
 
                   <div className="flex items-center justify-between mt-1 gap-3">
                     <p className="text-[10px] text-slate-500 max-w-md">
@@ -843,6 +1073,12 @@ const SDMControlsPage: React.FC = () => {
                       </button>
                     </div>
                   </div>
+
+                  <p className="mt-1 text-[9px] text-slate-500 text-right">
+                    Technischer Hinweis: Die Änderungen werden in der Datei{" "}
+                    <code className="text-slate-300">sdm_privacy_to_security.json</code>{" "}
+                    gespeichert und sollten im Git-Repository versioniert werden.
+                  </p>
 
                 </div>
               )}
